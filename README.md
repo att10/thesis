@@ -20,6 +20,9 @@ To compile and run this framework you need:
 - GNU C++ compiler >=4.1
 - libboost >= 1.40.0
 - libpcap-dev >=0.8
+- pcre >= 8.0.0
+
+Set up LD_LIBRARY_PATH to include boost libs.
 
 
 Overview
