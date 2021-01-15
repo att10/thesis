@@ -143,7 +143,7 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	string line;
     
 	unsigned int persistent_count = 0;
-	
+
 	while(getline(file, line)) {
 		list<string> parts;
 
@@ -244,6 +244,8 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	cout << "Alphabet size: " << cfg.get_alphabet_size() << endl;
 #endif
 	
+	cout<<"Alphabet Size: " << cfg.get_alphabet_size() << endl;
+	
 	offset_table_size_ = (cfg.get_alphabet_size()+1)*sizeof(*offset_table_);
 	
 	// padding is not required as in the original iNFAnt 
@@ -285,6 +287,33 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 		}
 	}
 	offset_table_[cfg.get_alphabet_size()] = nfa_current;
+
+	cout << "Starting test..." << endl;
+
+	int uniq_count = 0;
+	int total_count = 0;
+	st_t temp = -1;
+	for (unsigned int i = 0; i < (nfa_table_size_/sizeof(st_t)); i++) {
+		if (src_table_[i] != temp) {
+			temp = src_table_[i];
+			uniq_count++;
+		}
+		total_count++;
+	}
+
+	cout << "Test #: " << uniq_count << "/" << total_count << endl;
+	
+	int test_i = 100;
+	cout << offset_table_[1] << ", test index: " << test_i << endl;
+
+	for (unsigned int i = 0; i < offset_table_[1]; i+=1) {
+		//cout << i << ": " << src_table_[i + offset_table_[0]] << ", " << src_table_[i + offset_table_[1]] << endl;
+		if (src_table_[i + offset_table_[0]] != src_table_[i + offset_table_[test_i]]) {
+			cout << i << endl;
+		}
+	}
+
+	cout << "Ending test section..." << endl;
 
 	//iNFAnt2: Represent accepting states in the NFA state table as negative numbers 
 	for (unsigned int i = 0; i < transition_count_; i++) {

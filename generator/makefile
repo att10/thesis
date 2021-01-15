@@ -38,33 +38,33 @@ main_pthread.o: tcp.h
 #profiling-rdtsc.o: profiling-rdtsc-common.h profiling-rdtsc.h
 
 main: stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o dfa.o nfa.o subset.o parser.o trace.o hybrid_fa.o main.o cache.o fa_memory.o dfas_memory.o
-	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o partition.o wgraph.o dheap.o dfa.o nfa.o subset.o parser.o main.o trace.o hybrid_fa.o cache.o fa_memory.o dfas_memory.o -o regex -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
+	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o partition.o wgraph.o dheap.o dfa.o nfa.o subset.o parser.o main.o trace.o hybrid_fa.o cache.o fa_memory.o dfas_memory.o -o regex -libverbs -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
 
 main_dfas: stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o dfa.o hybrid_fa.o subset.o parser.o trace.o dfas_memory.o fa_memory.o main_dfas.o 
-	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o dfa.o hybrid_fa.o subset.o parser.o dfas_memory.o fa_memory.o main_dfas.o trace.o -o regex_dfas -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
+	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o dfa.o hybrid_fa.o subset.o parser.o dfas_memory.o fa_memory.o main_dfas.o trace.o -o regex_dfas -libverbs -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
 
 main_nfa: stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o dfa.o hybrid_fa.o subset.o parser.o trace.o dfas_memory.o fa_memory.o main_nfa.o 
-	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o dfa.o hybrid_fa.o subset.o parser.o dfas_memory.o fa_memory.o main_nfa.o trace.o -o regex_nfa -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
+	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o dfa.o hybrid_fa.o subset.o parser.o dfas_memory.o fa_memory.o main_nfa.o trace.o -o regex_nfa -libverbs -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
 	
 main_tracegen: stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o dfa.o hybrid_fa.o subset.o parser.o trace.o dfas_memory.o fa_memory.o main_tracegen.o 
-	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o dfa.o hybrid_fa.o subset.o parser.o dfas_memory.o fa_memory.o main_tracegen.o trace.o -o regex_tracegen -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
+	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o dfa.o hybrid_fa.o subset.o parser.o dfas_memory.o fa_memory.o main_tracegen.o trace.o -o regex_tracegen -libverbs -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
 
 main_ixp: stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o sorted_tx_list.o nfa.o dfa.o hybrid_fa.o comp_dfa.o comp_nfa.o subset.o parser.o ixp_memory.o main_ixp.o 
-	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o ixp_memory.o main_ixp.o -o regex_ixp -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
+	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o ixp_memory.o main_ixp.o -o regex_ixp -libverbs -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
 
 main_ixp_nfa: stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o sorted_tx_list.o nfa.o dfa.o hybrid_fa.o comp_dfa.o comp_nfa.o subset.o parser.o ixp_memory.o main_ixp_nfa.o 
-	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o ixp_memory.o main_ixp_nfa.o -o regex_ixp_nfa -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
+	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o ixp_memory.o main_ixp_nfa.o -o regex_ixp_nfa -libverbs -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
 
 main_memory: stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o sorted_tx_list.o nfa.o dfa.o hybrid_fa.o comp_dfa.o comp_nfa.o subset.o parser.o memory.o main_memory.o 
-	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o memory.o main_memory.o -o regex_memory -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
+	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o memory.o main_memory.o -o regex_memory -libverbs -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
 
 #//////////////////test
 main_memory_regen: stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o sorted_tx_list.o nfa.o dfa.o hybrid_fa.o comp_dfa.o comp_nfa.o subset.o parser.o memory.o main_memory_regen.o 
-	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o memory.o main_memory_regen.o -o regex_memory_regen -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
+	${CC} ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o memory.o main_memory_regen.o -o regex_memory_regen -libverbs -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
 #//////////////////test
 	
 main_pthread: stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o sorted_tx_list.o nfa.o dfa.o hybrid_fa.o comp_dfa.o comp_nfa.o subset.o parser.o memory.o main_pthread.o 
-	${CC} -pthread ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o memory.o main_pthread.o -o regex_pthread -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
+	${CC} -pthread ${CFLAGS} stdinc.o int_set.o linked_set.o dheap.o partition.o wgraph.o cache.o nfa.o sorted_tx_list.o dfa.o comp_dfa.o comp_nfa.o hybrid_fa.o subset.o parser.o memory.o main_pthread.o -o regex_pthread -libverbs -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap
 
 tcp_server: tcpserver.o 
 	${CC} ${CFLAGS} tcpserver.o - o tcpserver
