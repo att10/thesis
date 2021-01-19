@@ -32,6 +32,7 @@
 #include <boost/multi_array.hpp>
 #include <boost/range.hpp>
 #include <boost/regex.hpp>
+#include <bitset>
 #include <cstdlib>
 #include <cassert>
 #include <fstream>
@@ -303,15 +304,18 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 
 	cout << "Test #: " << uniq_count << "/" << total_count << endl;
 	
-	int test_i = 100;
+	int test_i = 10;
 	cout << offset_table_[1] << ", test index: " << test_i << endl;
 
-	for (unsigned int i = 0; i < offset_table_[1]; i+=1) {
-		//cout << i << ": " << src_table_[i + offset_table_[0]] << ", " << src_table_[i + offset_table_[1]] << endl;
-		if (src_table_[i + offset_table_[0]] != src_table_[i + offset_table_[test_i]]) {
-			cout << i << endl;
-		}
-	}
+	// for (unsigned int i = 0; i < offset_table_[1]; i+=1) {
+	// 	//cout << i << ": " << src_table_[i + offset_table_[0]] << ", " << src_table_[i + offset_table_[1]] << endl;
+	// 	if (src_table_[i + offset_table_[0]] != src_table_[i + offset_table_[test_i]]) {
+	// 		cout << i << endl;
+	// 	}
+	// }
+
+	cout << "src bit: " << std::bitset<32>(1 << (src_table_[1000] % bit_sizeof(ST_BLOCK))) << endl;
+	cout << src_table_[1000] << " / " << bit_sizeof(ST_BLOCK) << " = " << src_table_[1000]/bit_sizeof(ST_BLOCK) << endl;
 
 	cout << "Ending test section..." << endl;
 

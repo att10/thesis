@@ -43,5 +43,6 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 							unsigned int *st_vec_lengths,
 							ST_BLOCK *persistents,
 							unsigned int *match_count, match_type *match_array, unsigned int match_vec_size,
-							unsigned int *accum_nfa_table_lengths, unsigned int *accum_offset_table_lengths, unsigned int *accum_state_vector_lengths );
+							unsigned int *accum_nfa_table_lengths, unsigned int *accum_offset_table_lengths, unsigned int *accum_state_vector_lengths,
+							unsigned int *value);
 #endif /* DEVICE_FUNCTIONS_H_ */

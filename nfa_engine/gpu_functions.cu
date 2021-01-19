@@ -47,7 +47,8 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 							unsigned int *st_vec_lengths,
 							ST_BLOCK *persistents,
 							unsigned int *match_count, match_type *match_array, unsigned int match_vec_size,
-							unsigned int *accum_nfa_table_lengths, unsigned int *accum_offset_table_lengths, unsigned int *accum_state_vector_lengths){
+							unsigned int *accum_nfa_table_lengths, unsigned int *accum_offset_table_lengths, unsigned int *accum_state_vector_lengths,
+							unsigned int *value){
 	
 	__shared__ unsigned int shr_match_count;//Note: initializing is not allowed for shared variable
 	shr_match_count = 0;
@@ -82,6 +83,8 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 		status_vector[j] = final_vector[j];
 	__syncthreads();
 
+	
+	
 	unsigned int limit = cur_size; //printf("cur_size %d\n",cur_size);
 
 	//Payload loop
@@ -141,6 +144,16 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 		}
 	}
 
+	if (blockIdx.x == 0) {
+		unsigned int temp = 0;
+		for (int i = 0; i < st_vec_length/2; i++) {
+			if (status_vector[i] == 0 && status_vector[i+1] == 0) {
+				temp++;
+			}
+		}
+		*value = temp;
+	}
+	
 	//Copy the result vector from shared to device memory
 #pragma unroll
 	for(unsigned int j = myId; j < st_vec_length; j += thread_count) {

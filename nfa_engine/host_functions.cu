@@ -32,6 +32,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <bitset>
 
 #include <libgen.h>
 #include <stdio.h>
@@ -61,7 +62,8 @@ __global__ void nfa_kernel_texture(	symbol_fetch *input,
 									unsigned int *st_vec_lengths,
 									ST_BLOCK *persistents,
 									unsigned int *match_count, match_type *match_array, unsigned int match_vec_size,
-									unsigned int *accum_nfa_table_lengths, unsigned int *accum_offset_table_lengths, unsigned int *accum_state_vector_lengths);
+									unsigned int *accum_nfa_table_lengths, unsigned int *accum_offset_table_lengths, unsigned int *accum_state_vector_lengths,
+									unsigned int *value);
 #endif
 /*--------------------------------------------------------------------------------------------------*/
 void GPUMemInfo ()
@@ -90,12 +92,13 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
    long seconds, useconds;
    unsigned int *h_match_count, *d_match_count;
    match_type   *h_match_array, *d_match_array;
+   unsigned int h_value;
    
    ofstream fp_report;
    char filename[200], bufftmp[10];
    
    st_t *d_nfa_tables, *d_src_tables;
-   unsigned int *d_offset_tables;
+   unsigned int *d_offset_tables, *d_value;
    symbol *d_input;
    unsigned long *d_cur_size_vec;
    ST_BLOCK *d_svs, *d_persistents, *d_accepts;
@@ -143,7 +146,7 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 	
 	cudaMalloc( (void **) &d_match_array,  (tmp_avg_count*burst.get_sizes().size()) * n_subsets * sizeof(match_type));//just for now
     cudaMalloc( (void **) &d_match_count,  (              burst.get_sizes().size()) * n_subsets * sizeof(unsigned int));//just for now
-
+	cudaMalloc( &d_value, sizeof(unsigned int));
 	cudaMalloc( (void **) &d_accum_nfa_table_lengths,    n_subsets * sizeof(unsigned int));
 	cudaMalloc( (void **) &d_accum_offset_table_lengths, n_subsets * sizeof(unsigned int));
 	cudaMalloc( (void **) &d_accum_state_vector_lengths, n_subsets * sizeof(unsigned int));
@@ -167,6 +170,9 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 	cudaMalloc((void **) &d_accepts,       tmp_state_vector_total_size);
 	
 	//GPUMemInfo();
+	cudaDeviceProp deviceProp;
+    cudaGetDeviceProperties(&deviceProp, 0);
+	cout << "Shared Mem: " << deviceProp.sharedMemPerBlock << endl;
 	
 	for (unsigned int i = 0; i < n_subsets; i++){//Copy to device memory
 		cudaError_t retval1, retval2, retval3, retval4, retval5;
@@ -345,7 +351,7 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 												d_st_vec_lengths,
 												d_persistents,
 												d_match_count, d_match_array, tmp_avg_count,
-												d_accum_nfa_table_lengths, d_accum_offset_table_lengths, d_accum_state_vector_lengths);	
+												d_accum_nfa_table_lengths, d_accum_offset_table_lengths, d_accum_state_vector_lengths, d_value);	
 #endif
 	
 	cudaThreadSynchronize();
@@ -368,9 +374,11 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 	
 	cudaMemcpy( h_match_count,  d_match_count,                 burst.get_sizes().size()  * n_subsets * sizeof(unsigned int), cudaMemcpyDeviceToHost);
 	cudaMemcpy( h_match_array, d_match_array, (tmp_avg_count*burst.get_sizes().size()) * n_subsets * sizeof(match_type), cudaMemcpyDeviceToHost);
-
+	cudaMemcpy( &h_value, d_value, sizeof(unsigned int), cudaMemcpyDeviceToHost);
+	cudaFree(d_value);
     gettimeofday(&c3, NULL);		
 
+	cout << "Value: " << h_value << ", " << std::bitset<32>(h_value) << endl;
 	// Collect results
 	//Temporarily comment the following FOR loop
     printf("Collecting results and saving into files ...\n");
