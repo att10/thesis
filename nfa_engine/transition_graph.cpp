@@ -43,6 +43,7 @@
 #include <pthread.h>//parallelize transition duplicating section
 #include <time.h>
 #include <sys/time.h>
+#include <set>
 
 #include "config_options.h"
 #include "cuda_allocator.h"
@@ -295,8 +296,8 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	int total_count = 0;
 	st_t temp = -1;
 	for (unsigned int i = 0; i < (nfa_table_size_/sizeof(st_t)); i++) {
-		if (src_table_[i] != temp) {
-			temp = src_table_[i];
+		if (src_table_[i]/32 != temp) {
+			temp = src_table_[i]/32;
 			uniq_count++;
 		}
 		total_count++;
@@ -304,15 +305,46 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 
 	cout << "Test #: " << uniq_count << "/" << total_count << endl;
 	
-	int test_i = 10;
+	int test_i = 205;
 	cout << offset_table_[1] << ", test index: " << test_i << endl;
 
-	// for (unsigned int i = 0; i < offset_table_[1]; i+=1) {
-	// 	//cout << i << ": " << src_table_[i + offset_table_[0]] << ", " << src_table_[i + offset_table_[1]] << endl;
-	// 	if (src_table_[i + offset_table_[0]] != src_table_[i + offset_table_[test_i]]) {
-	// 		cout << i << endl;
-	// 	}
-	// }
+	set<int> s1;
+	s1.insert(10);
+	cout << s1.size() << endl;
+
+	for (unsigned int i = 0; i < offset_table_[1]; i+=1) {
+		//cout << i << ": " << src_table_[i + offset_table_[0]] << ", " << src_table_[i + offset_table_[1]] << endl;
+		if (src_table_[i + offset_table_[204]] != src_table_[i + offset_table_[test_i]]) {
+			cout << i << endl;
+		}
+	}
+
+	cout << "Starting hist..." << endl;
+
+	int found, hist;
+	for (int i = 0; i < 256; i++) {
+		hist = 0;
+		for (int j = offset_table_[i]; j < offset_table_[i+1]; j++) {
+			s1.insert(src_table_[j]);
+		}
+		for (int k = 0; k < 256; k++) {
+			if (i != k) {
+				int temp = offset_table_[k+1] - offset_table_[k];
+				found = temp;
+				for (int l = offset_table_[k]; l < offset_table_[k+1]; l++) {
+					found -= s1.count(src_table_[l]);
+				}
+				//cout << i << ", " << k << ": " << found << " of " << offset_table_[k+1] - offset_table_[k] << endl;
+				if (found == 0) {
+					hist++;
+				}
+				// if (i == 0) {
+				// 	cout << k << ": " << temp << endl;
+				// }
+			}	
+		}
+		cout << i << ": " << hist << endl;
+	}
 
 	cout << "src bit: " << std::bitset<32>(1 << (src_table_[1000] % bit_sizeof(ST_BLOCK))) << endl;
 	cout << src_table_[1000] << " / " << bit_sizeof(ST_BLOCK) << " = " << src_table_[1000]/bit_sizeof(ST_BLOCK) << endl;
