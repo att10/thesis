@@ -298,54 +298,87 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	for (unsigned int i = 0; i < (nfa_table_size_/sizeof(st_t)); i++) {
 		if (src_table_[i]/32 != temp) {
 			temp = src_table_[i]/32;
+		// if (src_table_[i] != temp) {
+		// 	temp = src_table_[i];
 			uniq_count++;
 		}
 		total_count++;
 	}
 
-	cout << "Test #: " << uniq_count << "/" << total_count << endl;
+	cout << "Test #s: " << uniq_count << "/" << total_count << endl;
 	
-	int test_i = 205;
-	cout << offset_table_[1] << ", test index: " << test_i << endl;
+	// int test_i = 205;
+	// cout << offset_table_[1] << ", test index: " << test_i << endl;
 
-	set<int> s1;
-	s1.insert(10);
-	cout << s1.size() << endl;
+	set<int> s1, s2, groups, outputted;
 
-	for (unsigned int i = 0; i < offset_table_[1]; i+=1) {
-		//cout << i << ": " << src_table_[i + offset_table_[0]] << ", " << src_table_[i + offset_table_[1]] << endl;
-		if (src_table_[i + offset_table_[204]] != src_table_[i + offset_table_[test_i]]) {
-			cout << i << endl;
-		}
-	}
+	// for (unsigned int i = 0; i < offset_table_[1]; i+=1) {
+	// 	//cout << i << ": " << src_table_[i + offset_table_[0]] << ", " << src_table_[i + offset_table_[1]] << endl;
+	// 	if (src_table_[i + offset_table_[204]] != src_table_[i + offset_table_[test_i]]) {
+	// 		cout << i << endl;
+	// 	}
+	// }
 
+	// --------------- Histogram Stuff ---------------
 	cout << "Starting hist..." << endl;
 
+	ofstream output_file("groups.txt");
 	int found, hist;
+	int group_count = 0;
+	bool new_group = false;
 	for (int i = 0; i < 256; i++) {
+		//cout << s1.size() << ", ";
+		s1.clear();
+		groups.clear();
+		//cout << s1.size() << endl;
+
+		new_group = false;
+
+		if (!outputted.count(i)) {
+			new_group = true;
+			outputted.insert(i);
+			//output_file(("symbol_" + boost::lexical_cast<std::string>(i) + ".txt").c_str());
+			output_file << "----- " << ++group_count << " -----" << endl;
+			output_file << i << endl;
+		}
+
 		hist = 0;
 		for (int j = offset_table_[i]; j < offset_table_[i+1]; j++) {
 			s1.insert(src_table_[j]);
+			groups.insert(src_table_[j]/32);
 		}
 		for (int k = 0; k < 256; k++) {
 			if (i != k) {
+				s2.clear();
 				int temp = offset_table_[k+1] - offset_table_[k];
 				found = temp;
 				for (int l = offset_table_[k]; l < offset_table_[k+1]; l++) {
 					found -= s1.count(src_table_[l]);
+					s2.insert(src_table_[l]);
 				}
 				//cout << i << ", " << k << ": " << found << " of " << offset_table_[k+1] - offset_table_[k] << endl;
-				if (found == 0) {
+				if (found == 0 && (s1.size() == s2.size())) {
 					hist++;
+					if (!outputted.count(k)) {
+						outputted.insert(k);
+						output_file << k << endl;
+					}
 				}
 				// if (i == 0) {
 				// 	cout << k << ": " << temp << endl;
 				// }
 			}	
 		}
-		cout << i << ": " << hist << endl;
-	}
 
+		if (new_group) {
+			output_file << "(# states: " << s1.size() << ", # symbols: " << hist + 1 << ")" << endl;
+		}
+
+		cout << "Symbol " << i << ", matching symbol count: " << hist;
+		cout << ", unique states: " << s1.size() << ", unique groups: " << groups.size() << endl;
+		
+	}
+	output_file.close();
 	cout << "src bit: " << std::bitset<32>(1 << (src_table_[1000] % bit_sizeof(ST_BLOCK))) << endl;
 	cout << src_table_[1000] << " / " << bit_sizeof(ST_BLOCK) << " = " << src_table_[1000]/bit_sizeof(ST_BLOCK) << endl;
 
