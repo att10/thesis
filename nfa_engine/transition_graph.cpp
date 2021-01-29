@@ -314,7 +314,7 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	// int test_i = 205;
 	// cout << offset_table_[1] << ", test index: " << test_i << endl;
 
-	set<int> s1, s2, groups, groups_2, outputted;
+	set<int> s1, s2, groups, groups_2, outputted, g_outputted;
 
 	// for (unsigned int i = 0; i < offset_table_[1]; i+=1) {
 	// 	//cout << i << ": " << src_table_[i + offset_table_[0]] << ", " << src_table_[i + offset_table_[1]] << endl;
@@ -326,11 +326,14 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	// --------------- Histogram Stuff ---------------
 	cout << "Starting hist..." << endl;
 
-	ofstream verifi_file("verifi.txt");
-	ofstream output_file("groups.txt");
+	// ofstream verifi_file("verifi.txt");
+	ofstream output_file("bins.txt");
+	ofstream output_file2("bins2.txt");
 	int found, g_found, hist, p_hist, g_hist;
 	int group_count = 0;
-	bool new_group = false;
+	int bin_count = 0;
+	bool new_group = false; // state bins
+	bool new_group2 = false; // group bins
 	for (int i = 0; i < 256; i++) {
 		//cout << s1.size() << ", ";
 		s1.clear();
@@ -347,18 +350,26 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 			output_file << i << endl;
 		}
 
+		new_group2 = false;
+		if (!g_outputted.count(i)) {
+			new_group2 = true;
+			g_outputted.insert(i);
+			output_file2 << "----- " << ++bin_count << " -----" << endl;
+			output_file2 << i << endl;
+		}
+
 		hist = 0;
 		p_hist = 0;
 		g_hist = 0;
 		for (int j = offset_table_[i]; j < offset_table_[i+1]; j++) {
-			if (i < 2) {
-				verifi_file << src_table_[j] << " ";
-			}
+			// if (i < 2) {
+			// 	verifi_file << src_table_[j] << " ";
+			// }
 			
 			s1.insert(src_table_[j]);
 			groups.insert(src_table_[j]/32);
 		}
-		verifi_file << endl;
+		// verifi_file << endl;
 		for (int k = 0; k < 256; k++) {
 			if (i != k) {
 				s2.clear();
@@ -390,6 +401,10 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 				}
 				if (g_found == 0 && (groups.size() == groups_2.size())) {
 					++g_hist;
+					if (!g_outputted.count(k)) {
+						g_outputted.insert(k);
+						output_file2 << k << endl;
+					}
 				}
 				// if (i == 0) {
 				// 	cout << k << ": " << temp << endl;
@@ -400,13 +415,17 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 		if (new_group) {
 			output_file << "(# states: " << s1.size() << ", # symbols: " << hist + 1 << ", # groups: " << groups.size() << ")" << endl;
 		}
+		if (new_group2) {
+			output_file2 << "(# states: " << s1.size() << ", # symbols: " << hist + 1 << ", # groups: " << groups.size() << ")" << endl;
+		}
 
 		cout << "Symbol " << i << ", matching symbol count: " << hist << ", perfect match: " << p_hist;
 		cout << ", unique states: " << s1.size() << ", unique groups: " << groups.size() << ", matching groups: " << g_hist << endl;
 		
 	}
 	output_file.close();
-	verifi_file.close();
+	output_file2.close();
+	// verifi_file.close();
 	cout << "src bit: " << std::bitset<32>(1 << (src_table_[1000] % bit_sizeof(ST_BLOCK))) << endl;
 	cout << src_table_[1000] << " / " << bit_sizeof(ST_BLOCK) << " = " << src_table_[1000]/bit_sizeof(ST_BLOCK) << endl;
 
