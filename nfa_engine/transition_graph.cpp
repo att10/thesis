@@ -308,7 +308,7 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 		transition_set.insert(make_pair(src_table_[i], nfa_table_[i]));
 	}
 
-	cout << "Transitions: " << transition_set.size() << endl;
+	cout << "Unique Transitions: " << transition_set.size() << endl;
 	cout << "Test #s: " << uniq_count << "/" << total_count << endl;
 	
 	// int test_i = 205;
@@ -329,7 +329,9 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	// ofstream verifi_file("verifi.txt");
 	ofstream output_file("bins.txt");
 	ofstream output_file2("bins2.txt");
-	int found, g_found, hist, p_hist, g_hist;
+	output_file << "Bin #,Symbols,Unique States,Matching Symbols" << endl;
+	output_file2 << "Bin #,Symbols,Unique States,Group Count,Matching Symbols (groups)" << endl;
+	int found, g_found, hist, p_hist, g_hist, gp_hist;
 	int group_count = 0;
 	int bin_count = 0;
 	bool new_group = false; // state bins
@@ -346,21 +348,24 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 			new_group = true;
 			outputted.insert(i);
 			//output_file(("symbol_" + boost::lexical_cast<std::string>(i) + ".txt").c_str());
-			output_file << "----- " << ++group_count << " -----" << endl;
-			output_file << i << endl;
+			// output_file << "----- " << ++group_count << " -----" << endl;
+			// output_file << i << endl;
+			output_file << ++group_count << "," << i;
 		}
 
 		new_group2 = false;
 		if (!g_outputted.count(i)) {
 			new_group2 = true;
 			g_outputted.insert(i);
-			output_file2 << "----- " << ++bin_count << " -----" << endl;
-			output_file2 << i << endl;
+			// output_file2 << "----- " << ++bin_count << " -----" << endl;
+			// output_file2 << i << endl;
+			output_file2 << ++bin_count << "," << i;
 		}
 
 		hist = 0;
 		p_hist = 0;
 		g_hist = 0;
+		gp_hist = 0;
 		for (int j = offset_table_[i]; j < offset_table_[i+1]; j++) {
 			// if (i < 2) {
 			// 	verifi_file << src_table_[j] << " ";
@@ -390,20 +395,28 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 				//cout << i << ", " << k << ": " << found << " of " << offset_table_[k+1] - offset_table_[k] << endl;
 				if (found == 0 && (s1.size() == s2.size())) {
 					++hist;
-					if (!outputted.count(k)) {
-						outputted.insert(k);
-						output_file << k << endl;
-					}
+					// if (!outputted.count(k)) {
+					// 	outputted.insert(k);
+					// 	output_file << "." << k;
+					// }
 					if (p_match == temp) {
+						if (!outputted.count(k)) {
+							outputted.insert(k);
+							output_file << "." << k;
+						}
 						++p_hist;
 						//cout << "match! " << i << ", " << k << endl;
 					}
 				}
 				if (g_found == 0 && (groups.size() == groups_2.size())) {
 					++g_hist;
-					if (!g_outputted.count(k)) {
-						g_outputted.insert(k);
-						output_file2 << k << endl;
+					
+					if (p_match == temp) {
+						if (!g_outputted.count(k)) {
+							g_outputted.insert(k);
+							output_file2 << "." << k;
+						}
+						++gp_hist;
 					}
 				}
 				// if (i == 0) {
@@ -413,10 +426,12 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 		}
 
 		if (new_group) {
-			output_file << "(# states: " << s1.size() << ", # symbols: " << hist + 1 << ", # groups: " << groups.size() << ")" << endl;
+			//output_file << "(# states: " << s1.size() << ", # symbols: " << hist + 1 << ", # groups: " << groups.size() << ")" << endl;
+			output_file << "," << s1.size() << "," << p_hist + 1 << endl;
 		}
 		if (new_group2) {
-			output_file2 << "(# states: " << s1.size() << ", # symbols: " << hist + 1 << ", # groups: " << groups.size() << ")" << endl;
+			//output_file2 << "(# states: " << s1.size() << ", # symbols: " << hist + 1 << ", # groups: " << groups.size() << ")" << endl;
+			output_file2 << "," << s1.size() << "," << groups.size() << "," << gphist + 1 << endl;
 		}
 
 		cout << "Symbol " << i << ", matching symbol count: " << hist << ", perfect match: " << p_hist;
