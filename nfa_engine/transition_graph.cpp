@@ -305,6 +305,56 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	}
 	cout << "Total transitions (including paddings): " << cnt_<< endl;
 	
+	int start, end;
+	filter_symbol_offset.push_back(0);
+	st_t src_st;
+	for (unsigned int i = 0; i < cfg.get_alphabet_size(); ++i) {
+
+		start = offset_table_[i];
+		end = offset_table_[i+1];
+
+		// compare src states of ith symbol to everything we already saw
+		unsigned short j;
+		bool found_bin = false;
+		for (j = 0; j < filter_symbol_offset.size() && !found_bin; ++j) {
+			for (unsigned int k = 0; k < end - start; ++k) {
+				if (filter_symbol_offset.at(j) + k >= state_filter.size()) {
+					break;
+				}
+				src_st = state_filter.at(filter_symbol_offset.at(j) + k);
+
+				if (src_table_[k + start] != src_st) {
+					break; // this symbol's src set does not match the jth symbol
+				}			
+
+				// this symbol matches the jth symbol
+				if (k == end - start - 1) {
+					filter_symbol_offset.push_back(filter_symbol_offset.at(j));
+					found_bin = true;
+				}	
+			}
+		}
+
+		// new bin, copy all states over to filter
+		if (!found_bin) {
+			filter_symbol_offset.push_back(filter_symbol_offset.size());
+			for (unsigned int k = start; k < end; ++k) {
+				state_filter.push_back(src_table_[k]);
+			}
+		}
+
+	}
+
+	// st_t prev = -1;
+	// st_t temp;
+	// for (unsigned int i = 0; i < transition_count_; i++) {
+	// 	temp = src_table_[i];	
+	// 	if (temp != prev) {
+	// 		state_filter.push_back(temp);
+	// 		prev = temp;
+	// 	}
+	// }
+	cout << "Filter count: " << state_filter.size() << endl;
 	//clog << "NFA loading done.\n";
 	return;
 }

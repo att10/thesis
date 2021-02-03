@@ -52,6 +52,10 @@ class TransitionGraph {
 		st_t *nfa_table_; // transition sequence
 		st_t *src_table_; // transition source table
 		unsigned int *offset_table_;
+
+		std::vector<unsigned short> helper_table;
+		std::vector<st_t> state_filter;
+		std::vector<st_t> filter_symbol_offset;
 		
 		st_t *nfa_table_optim_; // transition sequence
 		st_t *src_table_optim_; // transition source table

@@ -1,6 +1,6 @@
 .PHONY: all nfa_engine generator copy
 
-all: nfa_engine generator copy
+all: nfa_engine copy
 
 nfa_engine:
 	cd nfa_engine && $(MAKE)
@@ -10,9 +10,9 @@ generator:
 
 copy:
 	cp nfa_engine/nfa_engine bin/	
-	cp generator/regex_memory bin/
+	#cp generator/regex_memory bin/
 
 clean:
 	rm -f bin/nfa_engine bin/regex_memory
-	cd generator && $(MAKE) clean
+	#cd generator && $(MAKE) clean
 	cd nfa_engine && $(MAKE) clean
