@@ -251,7 +251,11 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	nfa_table_      = all_.alloc_host<st_t>(nfa_table_size_);
 	src_table_      = all_.alloc_host<st_t>(nfa_table_size_);
 	offset_table_   = all_.alloc_host<unsigned int>(offset_table_size_);
+	filter_symbol_offset = all_.alloc_host<unsigned int>(offset_table_size_);
+	filter_symbol_counts = all_.alloc_host<unsigned int>(offset_table_size_);
 	
+	cout << sizeof(*nfa_table_) << "," << sizeof(st_t) << endl;
+
 	//cout<< "sizeof(*offset_table_) = " << sizeof(*offset_table_) << " and sizeof(*nfa_table_) = " << sizeof(*nfa_table_) << endl;
 	//cout << " sizeof(*nfa_table_) = " << sizeof(*nfa_table_) << ", nfa_table_ size (bytes)= " << nfa_table_size_ << endl;
 	
@@ -306,55 +310,85 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	cout << "Total transitions (including paddings): " << cnt_<< endl;
 	
 	int start, end;
-	filter_symbol_offset.push_back(0);
+	int symbols_done = 1;
+	filter_symbol_offset[0] = 0;
 	st_t src_st;
 	for (unsigned int i = 0; i < cfg.get_alphabet_size(); ++i) {
 
 		start = offset_table_[i];
 		end = offset_table_[i+1];
 
-		// compare src states of ith symbol to everything we already saw
+		// compare src states of ith symbol to every symbol we already saw
 		unsigned short j;
 		bool found_bin = false;
-		for (j = 0; j < filter_symbol_offset.size() && !found_bin; ++j) {
-			for (unsigned int k = 0; k < end - start; ++k) {
-				if (filter_symbol_offset.at(j) + k >= state_filter.size()) {
+		st_t prev1 = -1;
+		int filter_i;
+		for (j = 0; j < symbols_done && !found_bin; ++j) {
+			filter_i = 0;
+			for (unsigned int k = 0; k <= end - start; ++k) {
+
+				// if we reached the end
+				if (k == end - start && filter_i == state_filter.size()) {
+					filter_symbol_offset[symbols_done++] = filter_symbol_offset[j];
+					//cout << i << ": " << filter_symbol_offset[symbols_done-1] <<endl;
+					found_bin = true;
+					filter_symbol_counts[i] = filter_symbol_counts[j];
+					//cout << filter_symbol_counts[j] << endl;
+					break;
+				}	
+
+				if (filter_symbol_offset[j] + filter_i >= state_filter.size()) {
 					break;
 				}
-				src_st = state_filter.at(filter_symbol_offset.at(j) + k);
+				src_st = state_filter.at(filter_symbol_offset[j] + filter_i);
 
-				if (src_table_[k + start] != src_st) {
+				if (src_table_[k + start]/32 != prev1) {
+					prev1 = src_table_[k + start]/32;
+				} else {
+					continue;
+				}
+
+				if (src_table_[k + start]/32 != src_st) {
 					break; // this symbol's src set does not match the jth symbol
 				}			
 
-				// this symbol matches the jth symbol
-				if (k == end - start - 1) {
-					filter_symbol_offset.push_back(filter_symbol_offset.at(j));
-					found_bin = true;
-				}	
+				// element at filter_i pos matches, time to check next
+				++filter_i;
+
 			}
 		}
 
 		// new bin, copy all states over to filter
 		if (!found_bin) {
-			filter_symbol_offset.push_back(filter_symbol_offset.size());
+			filter_symbol_offset[symbols_done++] = state_filter.size();
+			//cout << i << ": " << filter_symbol_offset[symbols_done-1] <<endl;
+			st_t prev = -1;
+			st_t src_count = 0;
+			st_t temp;
 			for (unsigned int k = start; k < end; ++k) {
-				state_filter.push_back(src_table_[k]);
+				temp = src_table_[k]/32;
+				if (state_filter.empty() || temp != state_filter.back()) {
+					helper_table.push_back(end - k);
+					state_filter.push_back(temp);
+					//prev = temp;
+					src_count++;
+				}
 			}
+			//cout << src_count << endl;
+			filter_symbol_counts[i] = src_count;
 		}
 
 	}
 
-	// st_t prev = -1;
-	// st_t temp;
-	// for (unsigned int i = 0; i < transition_count_; i++) {
-	// 	temp = src_table_[i];	
-	// 	if (temp != prev) {
-	// 		state_filter.push_back(temp);
-	// 		prev = temp;
-	// 	}
-	// }
-	cout << "Filter count: " << state_filter.size() << endl;
+	state_filter.shrink_to_fit();
+
+	filter_table_ = all_.alloc_host<st_t>(state_filter.size()*sizeof(st_t));
+	for (int i = 0; i < state_filter.size(); i++) {
+		filter_table_[i] = state_filter.at(i);
+	}
+
+	cout << "Symbol Count: " << symbols_done << endl;
+	cout << "Filter count: " << state_filter.size() << ", " << state_filter.capacity() << endl;
 	//clog << "NFA loading done.\n";
 	return;
 }
@@ -377,6 +411,11 @@ void TransitionGraph::copy_to_device(){
 			offset_table_size_, cudaMemcpyHostToDevice);
 	CUDA_CHECK(retval,
 			"Error while copying character start offset table to device memory");
+
+	d_filter_table_ = all_.alloc_device<ST_BLOCK>(state_filter.size()*sizeof(st_t));
+	retval = cudaMemcpy(d_filter_table_, filter_table_, state_filter.size()*sizeof(st_t),
+			cudaMemcpyHostToDevice);
+	CUDA_CHECK(retval, "Error while copying filter table to device memory");
 
 #ifdef DEBUG
 	cout << "Automata:" << endl;
@@ -594,6 +633,10 @@ TransitionGraph *load_nfa_file(const char *pattern_name, unsigned int gid, unsig
 	return tg;
 }
 /*------------------------------------------------------------------------------------*/
+ST_BLOCK *TransitionGraph::get_d_filter_table() const {
+	return d_filter_table_;
+}
+
 ST_BLOCK *TransitionGraph::get_d_nfa_table() const {
 	return d_nfa_table_;
 }
@@ -614,8 +657,20 @@ st_t *TransitionGraph::get_src_table() {
 	return src_table_;
 }
 
+st_t *TransitionGraph::get_filter_table() {
+	return filter_table_;
+}
+
 unsigned int *TransitionGraph::get_offset_table() {
 	return offset_table_;
+}
+
+unsigned int *TransitionGraph::get_filter_symbol_offset() {
+	return filter_symbol_offset;
+}
+
+unsigned int *TransitionGraph::get_filter_symbol_counts() {
+	return filter_symbol_counts;
 }
 
 StateVector &TransitionGraph::get_mutable_persistent_states() {
@@ -677,4 +732,5 @@ void TransitionGraph::free_hostmem(){
 	all_.dealloc_host(nfa_table_);
 	all_.dealloc_host(src_table_);
 	all_.dealloc_host(offset_table_);
+	all_.dealloc_host(filter_table_);
 }

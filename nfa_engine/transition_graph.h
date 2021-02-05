@@ -55,7 +55,11 @@ class TransitionGraph {
 
 		std::vector<unsigned short> helper_table;
 		std::vector<st_t> state_filter;
-		std::vector<st_t> filter_symbol_offset;
+		
+		st_t *filter_table_;
+		unsigned int *filter_symbol_offset;
+		unsigned int *filter_symbol_counts;
+		ST_BLOCK *d_filter_table_;
 		
 		st_t *nfa_table_optim_; // transition sequence
 		st_t *src_table_optim_; // transition source table
@@ -90,7 +94,12 @@ class TransitionGraph {
 		                                                           , int *rulestartvec, unsigned int gid
 #endif
 		                                                                                                 ) const;//multi-byte fetching
-								  
+
+		ST_BLOCK *get_d_filter_table() const;
+		st_t *get_filter_table();
+		unsigned int *get_filter_symbol_offset();
+		unsigned int *get_filter_symbol_counts();
+
 		ST_BLOCK *get_d_nfa_table() const;
 		ST_BLOCK *get_d_src_table() const;
 		unsigned int *get_d_offset_table() const;
