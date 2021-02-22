@@ -120,11 +120,11 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 				// }
 				unsigned short real_base_offset = helper_table[i + filter_base];
 				unsigned short next_offset = helper_table[i + filter_base + 1];
-				if (src_state != src_tables[real_base_offset + tr_base+ accum_nfa_table_length]) {
-					while(1) {
+				// if (src_state != src_tables[real_base_offset + tr_base+ accum_nfa_table_length]) {
+				// 	while(1) {
 
-					}
-				}
+				// 	}
+				// }
 // These macros are there to extract the relevant fields.
 // Bits and chunks are there to select the right bit in the state vectors.
 #define src_bit  (1 << (src_state % bit_sizeof(ST_BLOCK)))

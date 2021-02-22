@@ -310,7 +310,7 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	cout << "Total transitions (including paddings): " << cnt_<< endl;
 	
 	int start, end;
-	int symbols_done = 1;
+	//int symbols_done = 1;
 	filter_symbol_offset[0] = 0;
 	st_t src_st;
 	for (unsigned int i = 0; i < cfg.get_alphabet_size(); ++i) {
@@ -318,66 +318,120 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 		start = offset_table_[i];
 		end = offset_table_[i+1];
 
-		// compare src states of ith symbol to every symbol we already saw
-		unsigned short j;
-		bool found_bin = false;
-		st_t prev1 = -1;
-		int filter_i;
-		for (j = 0; j < symbols_done && !found_bin; ++j) {
-			filter_i = 0;
-			for (unsigned int k = 0; k <= end - start; ++k) {
-
-				// if we reached the end
-				if (k == end - start && filter_i == state_filter.size()) {
-					filter_symbol_offset[symbols_done++] = filter_symbol_offset[j];
-					//cout << i << ": " << filter_symbol_offset[symbols_done-1] <<endl;
-					found_bin = true;
-					filter_symbol_counts[i] = filter_symbol_counts[j];
-					//cout << filter_symbol_counts[j] << endl;
-					break;
-				}	
-
-				if (filter_symbol_offset[j] + filter_i >= state_filter.size()) {
-					break;
-				}
-				src_st = state_filter.at(filter_symbol_offset[j] + filter_i);
-
-				if (src_table_[k + start] != prev1) {
-					prev1 = src_table_[k + start];
+		bool match_found = false;
+		for (int j = 0; (j < i) && (j < cfg.get_alphabet_size()) && !match_found; ++j) {
+			int filter_index = 0;
+			unsigned int uniq_count = 0;
+			st_t prev = -1, temp = -1;
+			for (int k = start; k <= end; ++k) {
+				
+				// found a matching subset of filter!
+				if (k == end) {
+					filter_symbol_offset[i] = filter_symbol_offset[j];
+					filter_symbol_counts[i] = uniq_count;
+					match_found = true;
 				} else {
-					continue;
+					// Gonna go out of bounds
+					if (filter_symbol_offset[j] + filter_index >= state_filter.size()) {
+						break;
+					}
+
+					temp = src_table_[k];
+					if (temp != prev) {
+						prev = temp;
+						uniq_count++;
+
+						// do we have a match?
+						if (temp != state_filter.at(filter_symbol_offset[j] + filter_index)) {
+							// nope
+							break;
+						}
+
+						++filter_index;
+					}
 				}
-
-				if (src_table_[k + start] != src_st) {
-					break; // this symbol's src set does not match the jth symbol
-				}			
-
-				// element at filter_i pos matches, time to check next
-				++filter_i;
-
 			}
 		}
 
-		// new bin, copy all states over to filter
-		if (!found_bin) {
-			filter_symbol_offset[symbols_done++] = state_filter.size(); // offset from front
-			//cout << i << ": " << filter_symbol_offset[symbols_done-1] <<endl;
-			st_t prev = -1;
-			st_t src_count = 0;
-			st_t temp;
-			for (unsigned int k = start; k < end; ++k) {
-				temp = src_table_[k];
-				if (state_filter.empty() || temp != state_filter.back()) {
-					helper_table.push_back(k-start);
+		// Went through whole filter without finding anything
+		if (!match_found) {
+			
+			filter_symbol_offset[i] = state_filter.size();
+			st_t temp, prev = -1;
+			unsigned int src_count = 0;
+			for (int l = start; l < end; ++l) {
+				temp = src_table_[l];
+				if (temp != prev) {
+					helper_table.push_back(l - start);
+					prev = temp;
 					state_filter.push_back(temp);
-					//prev = temp;
 					src_count++;
 				}
 			}
+			filter_symbol_counts[i] = src_count;
 			
-			filter_symbol_counts[i] = src_count; // number of unique states for each symbol
 		}
-		cout << "!!!: " << filter_symbol_offset[i] << ", " << filter_symbol_counts[i] << endl;
+
+		// // compare src states of ith symbol to every symbol we already saw
+		// unsigned short j;
+		// bool found_bin = false;
+		// st_t prev1 = -1;
+		// int filter_i;
+		// for (j = 0; j < i && !found_bin; ++j) {
+		// 	filter_i = 0;
+		// 	for (unsigned int k = 0; k <= end - start; ++k) {
+
+		// 		// if we reached the end
+		// 		if (k == end - start && filter_i == state_filter.size()) {
+		// 			filter_symbol_offset[i] = filter_symbol_offset[j];
+		// 			//cout << i << ": " << filter_symbol_offset[symbols_done-1] <<endl;
+		// 			found_bin = true;
+		// 			filter_symbol_counts[i] = filter_symbol_counts[j];
+		// 			//cout << filter_symbol_counts[j] << endl;
+		// 			break;
+		// 		}	
+
+		// 		if (filter_symbol_offset[j] + filter_i >= state_filter.size()) {
+		// 			break;
+		// 		}
+		// 		src_st = state_filter.at(filter_symbol_offset[j] + filter_i);
+
+		// 		if (src_table_[k + start] != prev1) {
+		// 			prev1 = src_table_[k + start];
+		// 		} else {
+		// 			continue;
+		// 		}
+
+		// 		if (src_table_[k + start] != src_st) {
+		// 			break; // this symbol's src set does not match the jth symbol
+		// 		}			
+
+		// 		// element at filter_i pos matches, time to check next
+		// 		++filter_i;
+
+		// 	}
+		// }
+
+		// // new bin, copy all states over to filter
+		// if (!found_bin) {
+		// 	filter_symbol_offset[i] = state_filter.size(); // offset from front
+		// 	//cout << i << ": " << filter_symbol_offset[symbols_done-1] <<endl;
+		// 	st_t prev = -1;
+		// 	st_t src_count = 0;
+		// 	st_t temp;
+		// 	for (unsigned int k = start; k < end; ++k) {
+		// 		temp = src_table_[k];
+		// 		if (state_filter.empty() || temp != state_filter.back()) {
+		// 			helper_table.push_back(k-start);
+		// 			state_filter.push_back(temp);
+		// 			//prev = temp;
+		// 			src_count++;
+		// 		}
+		// 	}
+			
+		// 	filter_symbol_counts[i] = src_count; // number of unique states for each symbol
+		// }
+		// cout << "!!!: " << filter_symbol_offset[i] << ", " << filter_symbol_counts[i] << endl;
 	}
 
 	// Place filter into optimally sized array
@@ -392,7 +446,7 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 	}
 	helper_table[helper_table.size()-1] = helper_table.back();
 
-	cout << "Symbol Count: " << symbols_done << endl;
+	//cout << "Symbol Count: " << symbols_done << endl;
 	cout << "Filter count: " << state_filter.size() << ", " << helper_table.size() << endl;
 	//clog << "NFA loading done.\n";
 	return;
