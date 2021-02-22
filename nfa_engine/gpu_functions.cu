@@ -47,7 +47,8 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 							unsigned int *st_vec_lengths,
 							ST_BLOCK *persistents,
 							unsigned int *match_count, match_type *match_array, unsigned int match_vec_size,
-							unsigned int *accum_nfa_table_lengths, unsigned int *accum_offset_table_lengths, unsigned int *accum_state_vector_lengths){
+							unsigned int *accum_nfa_table_lengths, unsigned int *accum_offset_table_lengths, unsigned int *accum_state_vector_lengths,
+							st_t *filter_table, unsigned int *symbol_counts, unsigned int *symbol_offset, unsigned short *helper_table){
 	
 	__shared__ unsigned int shr_match_count;//Note: initializing is not allowed for shared variable
 	shr_match_count = 0;
@@ -92,8 +93,13 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 			Input_  = Input_ >> 8;//Input_ right-shifted by 8 bits
 			
 			// input_transition_table contains the cumulative number of transitions for each input symbol
-			unsigned int tr_base   = input_transition_tables[Input   + accum_offset_table_length];
-			unsigned int tr_number = input_transition_tables[Input+1 + accum_offset_table_length] - tr_base;
+			unsigned int tr_base   = input_transition_tables[Input+ accum_offset_table_length];
+			unsigned int tr_number = input_transition_tables[Input+1+ accum_offset_table_length] - tr_base;
+			// unsigned int filter_base = symbol_offset[Input   + accum_offset_table_length];
+			// unsigned int filter_number = symbol_counts[Input + accum_offset_table_length];
+
+			unsigned int filter_base = symbol_offset[Input]; // start of symbol's states in filter
+			unsigned int filter_number = symbol_counts[Input]; // number of unique states for this symbol
 			
 			// Reset the future status vector
 			// Persistent (self-loop'd) states are never reset once reached.
@@ -103,30 +109,65 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 				future_status_vector[w] = 0;//might work too, since persistents vector is not used
 			__syncthreads();
 
-			for(unsigned int i=myId; i<tr_number; i+=thread_count) {
+			for(unsigned int i=myId; i<filter_number; i+=thread_count) {
 				// Each thread reads 1 transition at each step.
-				st_t dst_state = nfa_tables[i + tr_base + accum_nfa_table_length];
-				st_t src_state = src_tables[i + tr_base + accum_nfa_table_length];  
-		
+				
+				st_t src_state = filter_table[i + filter_base];  
+				// if (src_state == filter_table[i+1 + filter_base]) {
+				// 	while(1) {
+
+				// 	}
+				// }
+				unsigned short real_base_offset = helper_table[i + filter_base];
+				unsigned short next_offset = helper_table[i + filter_base + 1];
+				if (src_state != src_tables[real_base_offset + tr_base+ accum_nfa_table_length]) {
+					while(1) {
+
+					}
+				}
 // These macros are there to extract the relevant fields.
 // Bits and chunks are there to select the right bit in the state vectors.
 #define src_bit  (1 << (src_state % bit_sizeof(ST_BLOCK)))
-#define dst_bit  (1 << (dst_state % bit_sizeof(ST_BLOCK)))
 #define src_chunk (src_state / bit_sizeof(ST_BLOCK))
-#define dst_chunk (dst_state / bit_sizeof(ST_BLOCK))
 
 				ST_BLOCK lo_block = src_bit & status_vector[src_chunk];
 				if(lo_block) {
-					if (dst_state < 0) {//Added for matching operation: check if the dst state is an accepting state
-						dst_state = -dst_state;
-						tmp_match_count = atomicAdd(&shr_match_count, 1);//printf("Inside kernel-low, offset: %d, state: %d, count %d\n",p, dst_state, shr_match_count);
-						//match_offset[match_vec_size*blockIdx.x + shr_match_count-1 + blockIdx.y*match_vec_size*nstreams] = p + byt;
-						//match_states[match_vec_size*blockIdx.x + shr_match_count-1 + blockIdx.y*match_vec_size*nstreams] = dst_state;
-						tmp_match.off = p + byt;
-						tmp_match.stat= dst_state;
-						match_array[tmp_match_count + match_vec_size*(blockIdx.x + blockIdx.y*nstreams)] = tmp_match;
+
+					
+					//unsigned short real_number = helper_table[i + filter_base + 1] - real_base_offset;
+					
+					if (next_offset < real_base_offset) {
+						next_offset = tr_number;
 					}
-					atomicOr(&future_status_vector[dst_chunk], dst_bit);    //unsigned int atomicOr(unsigned int* address, unsigned int val);
+					unsigned short jk;
+					for (jk = real_base_offset; jk < next_offset; ++jk) {
+						
+						st_t dst_state = nfa_tables[jk + tr_base];
+						// if (src_tables[jk + tr_base + accum_nfa_table_length] != src_state) {
+						// 	while(1) {
+
+						// 	}
+						// }
+#define dst_bit  (1 << (dst_state % bit_sizeof(ST_BLOCK)))
+#define dst_chunk (dst_state / bit_sizeof(ST_BLOCK))
+
+						if (dst_state < 0) {//Added for matching operation: check if the dst state is an accepting state
+							
+							dst_state = -dst_state;
+							tmp_match_count = atomicAdd(&shr_match_count, 1);//printf("Inside kernel-low, offset: %d, state: %d, count %d\n",p, dst_state, shr_match_count);
+							//match_offset[match_vec_size*blockIdx.x + shr_match_count-1 + blockIdx.y*match_vec_size*nstreams] = p + byt;
+							//match_states[match_vec_size*blockIdx.x + shr_match_count-1 + blockIdx.y*match_vec_size*nstreams] = dst_state;
+							tmp_match.off = p + byt;
+							tmp_match.stat= dst_state;
+							match_array[tmp_match_count + match_vec_size*(blockIdx.x + blockIdx.y*nstreams)] = tmp_match;
+						}
+						atomicOr(&future_status_vector[dst_chunk], dst_bit);    //unsigned int atomicOr(unsigned int* address, unsigned int val);
+					}		
+					// if (src_tables[jk + tr_base + accum_nfa_table_length + 2] == src_state) {
+					// 	while(1) {
+
+					// 	}
+					// }			
 				}
 			}
 			// Swap status_vector and future_status_vector

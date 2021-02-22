@@ -55,9 +55,11 @@ class TransitionGraph {
 
 		std::vector<unsigned short> helper_table;
 		std::vector<st_t> state_filter;
+		size_t filter_size_;
 		
 		st_t *filter_table_;
 		unsigned int *filter_symbol_offset;
+		unsigned short *helper_table_;
 		unsigned int *filter_symbol_counts;
 		ST_BLOCK *d_filter_table_;
 		
@@ -99,6 +101,7 @@ class TransitionGraph {
 		st_t *get_filter_table();
 		unsigned int *get_filter_symbol_offset();
 		unsigned int *get_filter_symbol_counts();
+		unsigned short *get_helper_table();
 
 		ST_BLOCK *get_d_nfa_table() const;
 		ST_BLOCK *get_d_src_table() const;
@@ -117,6 +120,7 @@ class TransitionGraph {
 
 		size_t get_nfa_table_size() const;
 		size_t get_offset_table_size() const;
+		size_t get_filter_size() const;
 		
 		void free_devmem();
 		StateVector *tmp_states_;

@@ -103,6 +103,12 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
    unsigned int *accum_nfa_table_lengths, *accum_offset_table_lengths, *accum_state_vector_lengths, *st_vec_lengths;//Note: arrays contain accumulated values   
    unsigned int *d_accum_nfa_table_lengths, *d_accum_offset_table_lengths, *d_accum_state_vector_lengths, *d_st_vec_lengths;
 
+
+	// additions
+	st_t *d_filter_table;
+	unsigned short *d_helper_table;
+	unsigned int *d_filter_symbol_offset, *d_filter_symbol_counts;
+
 //#ifdef DEBUG
 	//cout << "------------- Preparing to launch kernel ---------------" << endl;
 	//cout << "Packets (Streams or Number of CUDA blocks in x-dimension): " << burst.get_sizes().size() << endl;
@@ -154,22 +160,31 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 	size_t tmp_accum_prev_nfa_table_size=0, tmp_accum_prev_offset_table_size=0;//in bytes
 	size_t tmp_state_vector_total_size=0, tmp_curr_state_vector_size=0, tmp_accum_prev_state_vector_size=0;//in bytes
 	
+	// additions
+	size_t tmp_filter_total_size=0;
+
 	for (unsigned int i = 0; i < n_subsets; i++) {//Find total size (in bytes) of each data structure
 		tmp_nfa_table_total_size    +=  tg[i]->get_nfa_table_size();
 		tmp_offset_table_total_size +=  tg[i]->get_offset_table_size();
 		tmp_state_vector_total_size +=  tg[i]->get_mutable_persistent_states().get_size();
 		st_vec_lengths[i]            =  cfg.get_state_vector(i).get_size()/sizeof(ST_BLOCK);
+		tmp_filter_total_size		+= 	tg[i]->get_filter_size();
 	}
 	cudaMalloc((void **) &d_nfa_tables,    tmp_nfa_table_total_size);//Allocate device memory
     cudaMalloc((void **) &d_src_tables,    tmp_nfa_table_total_size);
 	cudaMalloc((void **) &d_offset_tables, tmp_offset_table_total_size);
 	cudaMalloc((void **) &d_persistents,   tmp_state_vector_total_size);
 	cudaMalloc((void **) &d_accepts,       tmp_state_vector_total_size);
+	cudaMalloc((void **) &d_filter_table,  tmp_filter_total_size);
+	cudaMalloc((void **) &d_filter_symbol_counts, tmp_offset_table_total_size);
+	cudaMalloc((void **) &d_filter_symbol_offset, tmp_offset_table_total_size);
+	cudaMalloc((void **) &d_helper_table,  tmp_filter_total_size/2 + sizeof(unsigned short));
 	
 	//GPUMemInfo();
-	
+	cout << "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE" << endl;
+	cout << "Testing: " << n_subsets << endl;
 	for (unsigned int i = 0; i < n_subsets; i++){//Copy to device memory
-		cudaError_t retval1, retval2, retval3, retval4, retval5;
+		cudaError_t retval1, retval2, retval3, retval4, retval5, retval6, retval7, retval8, retval9;
 		tmp_curr_nfa_table_size    =  tg[i]->get_nfa_table_size();
 		tmp_curr_offset_table_size =  tg[i]->get_offset_table_size();
 		tmp_curr_state_vector_size =  tg[i]->get_mutable_persistent_states().get_size();
@@ -180,6 +195,11 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 			retval3 = cudaMemcpy( d_offset_tables, tg[i]->get_offset_table(),                              tmp_curr_offset_table_size, cudaMemcpyHostToDevice);
 			retval4 = cudaMemcpy( d_persistents,   tg[i]->get_mutable_persistent_states().get_host(false), tmp_curr_state_vector_size, cudaMemcpyHostToDevice);
 			retval5 = cudaMemcpy( d_accepts,       tg[i]->get_accept_states().get_host(false),             tmp_curr_state_vector_size, cudaMemcpyHostToDevice);
+			
+			retval6 = cudaMemcpy( d_filter_table,  tg[i]->get_filter_table(), 							   tmp_filter_total_size, 	   cudaMemcpyHostToDevice);
+			retval7 = cudaMemcpy( d_filter_symbol_counts, tg[i]->get_filter_symbol_counts(),               tmp_curr_offset_table_size, cudaMemcpyHostToDevice);
+			retval8 = cudaMemcpy( d_filter_symbol_offset, tg[i]->get_filter_symbol_offset(),               tmp_curr_offset_table_size, cudaMemcpyHostToDevice);
+			retval9 = cudaMemcpy( d_helper_table,  tg[i]->get_helper_table(), 							   tmp_filter_total_size/2+ sizeof(unsigned short),    cudaMemcpyHostToDevice);
 		}
 		else{
 			tmp_accum_prev_nfa_table_size    +=  tg[i-1]->get_nfa_table_size();
@@ -201,6 +221,10 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 		CUDA_CHECK(retval3, "Error while copying offset table to device memory");
 		CUDA_CHECK(retval4, "Error while copying persistent state vector to device memory");
 		CUDA_CHECK(retval5, "Error while copying accepting state vector to device memory");
+		CUDA_CHECK(retval6, "Error while copying filter to device memory");
+		CUDA_CHECK(retval7, "Error while copying filter counts to device memory");
+		CUDA_CHECK(retval8, "Error while copying filter offsets to device memory");
+		CUDA_CHECK(retval9, "Error while copying helper table to device memory");
 	}
 
 	d_input = burst.get_d_payloads();
@@ -345,7 +369,8 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 												d_st_vec_lengths,
 												d_persistents,
 												d_match_count, d_match_array, tmp_avg_count,
-												d_accum_nfa_table_lengths, d_accum_offset_table_lengths, d_accum_state_vector_lengths);	
+												d_accum_nfa_table_lengths, d_accum_offset_table_lengths, d_accum_state_vector_lengths,
+												d_filter_table, d_filter_symbol_counts, d_filter_symbol_offset, d_helper_table);	
 #endif
 	
 	cudaThreadSynchronize();
@@ -387,14 +412,14 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 		snprintf(bufftmp, sizeof(bufftmp),"%d",i+1);
 		strcat (filename,bufftmp);
 		strcat (filename,".txt");
-		fp_report.open (filename); //cout << "Report filename:" << filename << endl;
-		tg[i]->mapping_states2rules(&h_match_count[burst.get_sizes().size()*i], &h_match_array[tmp_avg_count*burst.get_sizes().size()*i], 
-		                            tmp_avg_count, burst.get_sizes(), burst.get_padded_sizes(), fp_report
-#ifdef DEBUG
-									, rulestartvec, i 
-#endif
-									                );
-		fp_report.close();
+// 		fp_report.open (filename); //cout << "Report filename:" << filename << endl;
+// 		tg[i]->mapping_states2rules(&h_match_count[burst.get_sizes().size()*i], &h_match_array[tmp_avg_count*burst.get_sizes().size()*i], 
+// 		                            tmp_avg_count, burst.get_sizes(), burst.get_padded_sizes(), fp_report
+// #ifdef DEBUG
+// 									, rulestartvec, i 
+// #endif
+// 									                );
+// 		fp_report.close();
 		for (unsigned int j = 0; j < burst.get_sizes().size(); j++)
 			total_matches += h_match_count[j + burst.get_sizes().size()*i];
 	}
@@ -419,6 +444,10 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 	cudaFree(d_offset_tables);
 	cudaFree(d_persistents);
 	cudaFree(d_accepts);
+	cudaFree(d_filter_symbol_counts);
+	cudaFree(d_filter_symbol_offset);
+	cudaFree(d_filter_table);
+	cudaFree(d_helper_table);
 	
 	free(h_match_count);
 	free(h_match_array);

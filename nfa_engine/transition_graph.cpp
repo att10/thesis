@@ -342,13 +342,13 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 				}
 				src_st = state_filter.at(filter_symbol_offset[j] + filter_i);
 
-				if (src_table_[k + start]/32 != prev1) {
-					prev1 = src_table_[k + start]/32;
+				if (src_table_[k + start] != prev1) {
+					prev1 = src_table_[k + start];
 				} else {
 					continue;
 				}
 
-				if (src_table_[k + start]/32 != src_st) {
+				if (src_table_[k + start] != src_st) {
 					break; // this symbol's src set does not match the jth symbol
 				}			
 
@@ -360,35 +360,40 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 
 		// new bin, copy all states over to filter
 		if (!found_bin) {
-			filter_symbol_offset[symbols_done++] = state_filter.size();
+			filter_symbol_offset[symbols_done++] = state_filter.size(); // offset from front
 			//cout << i << ": " << filter_symbol_offset[symbols_done-1] <<endl;
 			st_t prev = -1;
 			st_t src_count = 0;
 			st_t temp;
 			for (unsigned int k = start; k < end; ++k) {
-				temp = src_table_[k]/32;
+				temp = src_table_[k];
 				if (state_filter.empty() || temp != state_filter.back()) {
-					helper_table.push_back(end - k);
+					helper_table.push_back(k-start);
 					state_filter.push_back(temp);
 					//prev = temp;
 					src_count++;
 				}
 			}
-			//cout << src_count << endl;
-			filter_symbol_counts[i] = src_count;
+			
+			filter_symbol_counts[i] = src_count; // number of unique states for each symbol
 		}
-
+		cout << "!!!: " << filter_symbol_offset[i] << ", " << filter_symbol_counts[i] << endl;
 	}
 
+	// Place filter into optimally sized array
 	state_filter.shrink_to_fit();
-
-	filter_table_ = all_.alloc_host<st_t>(state_filter.size()*sizeof(st_t));
+	helper_table.push_back(end);
+	filter_size_ = state_filter.size()*sizeof(st_t);
+	filter_table_ = all_.alloc_host<st_t>(filter_size_);
+	helper_table_ = all_.alloc_host<unsigned short>(helper_table.size() * sizeof(unsigned short));
 	for (int i = 0; i < state_filter.size(); i++) {
 		filter_table_[i] = state_filter.at(i);
+		helper_table_[i] = helper_table.at(i);
 	}
+	helper_table[helper_table.size()-1] = helper_table.back();
 
 	cout << "Symbol Count: " << symbols_done << endl;
-	cout << "Filter count: " << state_filter.size() << ", " << state_filter.capacity() << endl;
+	cout << "Filter count: " << state_filter.size() << ", " << helper_table.size() << endl;
 	//clog << "NFA loading done.\n";
 	return;
 }
@@ -673,6 +678,10 @@ unsigned int *TransitionGraph::get_filter_symbol_counts() {
 	return filter_symbol_counts;
 }
 
+unsigned short *TransitionGraph::get_helper_table() {
+	return helper_table_;
+}
+
 StateVector &TransitionGraph::get_mutable_persistent_states() {
 	return persistent_states_;
 }
@@ -696,6 +705,10 @@ size_t TransitionGraph::get_nfa_table_size() const {
 
 size_t TransitionGraph::get_offset_table_size() const {
 	return offset_table_size_;
+}
+
+size_t TransitionGraph::get_filter_size() const {
+	return filter_size_;
 }
 
 void TransitionGraph::free_devmem(){
