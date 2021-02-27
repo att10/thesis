@@ -49,6 +49,8 @@ class TransitionGraph {
 		size_t offset_table_size_;
 		size_t state_vector_size_;
 
+		unsigned int alphabet_size_;
+
 		st_t *nfa_table_; // transition sequence
 		st_t *src_table_; // transition source table
 		unsigned int *offset_table_;
@@ -121,6 +123,7 @@ class TransitionGraph {
 		size_t get_nfa_table_size() const;
 		size_t get_offset_table_size() const;
 		size_t get_filter_size() const;
+		unsigned int get_alphabet_size() const;
 		
 		void free_devmem();
 		StateVector *tmp_states_;

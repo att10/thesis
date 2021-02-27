@@ -236,6 +236,9 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
 	cudaMemcpy( d_accum_state_vector_lengths, accum_state_vector_lengths, n_subsets * sizeof(unsigned int), cudaMemcpyHostToDevice);
 	cudaMemcpy( d_st_vec_lengths,             st_vec_lengths,             n_subsets * sizeof(unsigned int), cudaMemcpyHostToDevice);
 	
+	unsigned int alphabet_size = tg[0]->get_alphabet_size();
+	cudaMemcpyToSymbol("alphabet_size", &(alphabet_size), sizeof(unsigned int));
+	
 	GPUMemInfo();
 	
 	//Theoretical occupancy calculation
@@ -401,17 +404,17 @@ vector<set<unsigned> > nfa_execute(std::vector<TransitionGraph *> tg, Burst &bur
     printf("Collecting results and saving into files ...\n");
 	unsigned int total_matches=0;
 	for (unsigned int i = 0; i < n_subsets; i++) {
-#ifdef TEXTURE_MEM_USE
-		strcpy (filename,"Report_tex_");
-#else
-        strcpy (filename,"Report_global_");
-#endif	
-		snprintf(bufftmp, sizeof(bufftmp),"%d",n_subsets);
-		strcat (filename,bufftmp);
-		strcat (filename,"_");
-		snprintf(bufftmp, sizeof(bufftmp),"%d",i+1);
-		strcat (filename,bufftmp);
-		strcat (filename,".txt");
+// #ifdef TEXTURE_MEM_USE
+// 		strcpy (filename,"Report_tex_");
+// #else
+//         strcpy (filename,"Report_global_");
+// #endif	
+// 		snprintf(bufftmp, sizeof(bufftmp),"%d",n_subsets);
+// 		strcat (filename,bufftmp);
+// 		strcat (filename,"_");
+// 		snprintf(bufftmp, sizeof(bufftmp),"%d",i+1);
+// 		strcat (filename,bufftmp);
+// 		strcat (filename,".txt");
 // 		fp_report.open (filename); //cout << "Report filename:" << filename << endl;
 // 		tg[i]->mapping_states2rules(&h_match_count[burst.get_sizes().size()*i], &h_match_array[tmp_avg_count*burst.get_sizes().size()*i], 
 // 		                            tmp_avg_count, burst.get_sizes(), burst.get_padded_sizes(), fp_report

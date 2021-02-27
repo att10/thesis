@@ -245,7 +245,7 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 #endif
 	
 	offset_table_size_ = (cfg.get_alphabet_size()+1)*sizeof(*offset_table_);
-	
+	alphabet_size_ = cfg.get_alphabet_size();
 	// padding is not required as in the original iNFAnt 
 	nfa_table_size_ = transition_count_*sizeof(*nfa_table_); 
 	nfa_table_      = all_.alloc_host<st_t>(nfa_table_size_);
@@ -431,7 +431,7 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 			
 		// 	filter_symbol_counts[i] = src_count; // number of unique states for each symbol
 		// }
-		// cout << "!!!: " << filter_symbol_offset[i] << ", " << filter_symbol_counts[i] << endl;
+		cout << i << ": " << filter_symbol_offset[i] << ", " << filter_symbol_counts[i] << endl;
 	}
 
 	// Place filter into optimally sized array
@@ -763,6 +763,10 @@ size_t TransitionGraph::get_offset_table_size() const {
 
 size_t TransitionGraph::get_filter_size() const {
 	return filter_size_;
+}
+
+unsigned int TransitionGraph::get_alphabet_size() const {
+	return alphabet_size_;
 }
 
 void TransitionGraph::free_devmem(){

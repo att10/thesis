@@ -26,16 +26,17 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #ifdef DEVICE_EMU_DBG
-#include <assert.h>
 #include <stdio.h>
 #endif
-
+#include <assert.h>
 #include "common.h"
 #include "gpu_functions.h"
 
 #define myId		    threadIdx.x
 #define thread_count    blockDim.x
 #define nstreams        gridDim.x
+
+extern __constant__ unsigned int alphabet_size;
 
 extern __shared__ ST_BLOCK shared_base[];
 __global__ void nfa_kernel(	st_t *nfa_tables,
@@ -52,6 +53,14 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 	
 	__shared__ unsigned int shr_match_count;//Note: initializing is not allowed for shared variable
 	shr_match_count = 0;
+
+	//unsigned int num = alphabet_size;
+	__shared__ unsigned int s_symbol_offset[258];
+	__shared__ unsigned int s_symbol_counts[258];
+	for (int i = myId; i < 257; i += thread_count) {
+		s_symbol_offset[i] = symbol_offset[i];
+		s_symbol_counts[i] = symbol_counts[i];
+	}
 	
 	unsigned int tmp_match_count;
 	
@@ -92,14 +101,12 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 			unsigned int Input = Input_ & 0xFF;//extract 1 byte
 			Input_  = Input_ >> 8;//Input_ right-shifted by 8 bits
 			
-			// input_transition_table contains the cumulative number of transitions for each input symbol
-			unsigned int tr_base   = input_transition_tables[Input+ accum_offset_table_length];
-			unsigned int tr_number = input_transition_tables[Input+1+ accum_offset_table_length] - tr_base;
+			
 			// unsigned int filter_base = symbol_offset[Input   + accum_offset_table_length];
 			// unsigned int filter_number = symbol_counts[Input + accum_offset_table_length];
 
-			unsigned int filter_base = symbol_offset[Input]; // start of symbol's states in filter
-			unsigned int filter_number = symbol_counts[Input]; // number of unique states for this symbol
+			unsigned int filter_base = s_symbol_offset[Input]; // start of symbol's states in filter
+			unsigned int filter_number = s_symbol_counts[Input]; // number of unique states for this symbol
 			
 			// Reset the future status vector
 			// Persistent (self-loop'd) states are never reset once reached.
@@ -118,8 +125,7 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 
 				// 	}
 				// }
-				unsigned short real_base_offset = helper_table[i + filter_base];
-				unsigned short next_offset = helper_table[i + filter_base + 1];
+				
 				// if (src_state != src_tables[real_base_offset + tr_base+ accum_nfa_table_length]) {
 				// 	while(1) {
 
@@ -135,19 +141,20 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 
 					
 					//unsigned short real_number = helper_table[i + filter_base + 1] - real_base_offset;
-					
+					// input_transition_table contains the cumulative number of transitions for each input symbol
+					unsigned int tr_base   = input_transition_tables[Input+ accum_offset_table_length];
+					unsigned int tr_number = input_transition_tables[Input+1+ accum_offset_table_length] - tr_base;
+					unsigned short real_base_offset = helper_table[i + filter_base];
+					unsigned short next_offset = helper_table[i + filter_base + 1];
 					if (next_offset < real_base_offset) {
 						next_offset = tr_number;
 					}
 					unsigned short jk;
 					for (jk = real_base_offset; jk < next_offset; ++jk) {
 						
-						st_t dst_state = nfa_tables[jk + tr_base];
-						// if (src_tables[jk + tr_base + accum_nfa_table_length] != src_state) {
-						// 	while(1) {
+						st_t dst_state = nfa_tables[jk + tr_base+ accum_nfa_table_length];
+						assert(src_tables[jk + tr_base + accum_nfa_table_length] != src_state);
 
-						// 	}
-						// }
 #define dst_bit  (1 << (dst_state % bit_sizeof(ST_BLOCK)))
 #define dst_chunk (dst_state / bit_sizeof(ST_BLOCK))
 
