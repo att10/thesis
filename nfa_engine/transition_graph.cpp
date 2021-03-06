@@ -336,7 +336,14 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 						break;
 					}
 
+					
+
 					temp = src_table_[k];
+
+					if (temp != src_table_[k-start+offset_table_[j]]) {
+						break;
+					}
+
 					if (temp != prev) {
 						prev = temp;
 						uniq_count++;

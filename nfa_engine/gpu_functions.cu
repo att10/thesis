@@ -153,7 +153,6 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 					for (jk = real_base_offset; jk < next_offset; ++jk) {
 						
 						st_t dst_state = nfa_tables[jk + tr_base+ accum_nfa_table_length];
-						assert(src_tables[jk + tr_base + accum_nfa_table_length] != src_state);
 
 #define dst_bit  (1 << (dst_state % bit_sizeof(ST_BLOCK)))
 #define dst_chunk (dst_state / bit_sizeof(ST_BLOCK))
