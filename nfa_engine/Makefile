@@ -15,7 +15,7 @@ CC=gcc
 CUDA_INCLUDE= -I/usr/local/cuda-8.0/include -I/home/cs-students/21att1/bin/boost_1_75_0 -I/home/cs-students/21att1/bin/libpcap-1.9.1 
 
 CXXFLAGS+=$(CUDA_INCLUDE) -Wno-deprecated
-NVCCFLAGS+=$(CUDA_INCLUDE) -Xptxas -v -arch ${SM} --compiler-options -Wno-deprecated -lineinfo ## -DTEXTURE_MEM_USE
+NVCCFLAGS+=$(CUDA_INCLUDE) -Xptxas -v -arch ${SM} --compiler-options -Wno-deprecated -lineinfo ##-DGROUPS ## -DTEXTURE_MEM_USE
 
 export DYN_LIB=  -L/home/cs-students/21att1/bin/libpcap-1.9.1 -lpcap -L/home/cs-students/21att1/bin/boost_1_75_0/stage/lib -lboost_regex -L/home/cs-students/21att1/bin/pcre-8.44/lib -lpcre
 

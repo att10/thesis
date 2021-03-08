@@ -120,17 +120,7 @@ __global__ void nfa_kernel(	st_t *nfa_tables,
 				// Each thread reads 1 transition at each step.
 				
 				st_t src_state = filter_table[i + filter_base];  
-				// if (src_state == filter_table[i+1 + filter_base]) {
-				// 	while(1) {
-
-				// 	}
-				// }
 				
-				// if (src_state != src_tables[real_base_offset + tr_base+ accum_nfa_table_length]) {
-				// 	while(1) {
-
-				// 	}
-				// }
 // These macros are there to extract the relevant fields.
 // Bits and chunks are there to select the right bit in the state vectors.
 #define src_bit  (1 << (src_state % bit_sizeof(ST_BLOCK)))

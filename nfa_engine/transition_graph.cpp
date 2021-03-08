@@ -343,6 +343,9 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 					if (temp != src_table_[k-start+offset_table_[j]]) {
 						break;
 					}
+#ifdef GROUPS
+					temp = temp/32;
+#endif
 
 					if (temp != prev) {
 						prev = temp;
@@ -367,7 +370,11 @@ TransitionGraph::TransitionGraph(istream &file, CudaAllocator &allocator, unsign
 			st_t temp, prev = -1;
 			unsigned int src_count = 0;
 			for (int l = start; l < end; ++l) {
+#ifdef GROUPS
+				temp = src_table_[l]/32;
+#else
 				temp = src_table_[l];
+#endif
 				if (temp != prev) {
 					helper_table.push_back(l - start);
 					prev = temp;
